@@ -89,10 +89,17 @@ const run = async (payload: WebhookPayloadStatus): Promise<void> => {
     return;
   }
 
-  const branch = payload.branches.find((e) => shouldDeployBranch(e.name));
-  if (!branch) {
-    console.log('Branch for dependabot not found, skipping');
-    return;
+  if (payload.branches.length !== 1) {
+    console.log('DEBUG: payload.branches array', JSON.stringify(payload.branches));
+    throw new Error(
+      `Length of payload.branches array is different than expected. Length: ${payload.branches.length}`,
+    );
+  }
+
+  const branch = payload.branches[0];
+
+  if (!shouldDeployBranch(branch.name)) {
+    throw new Error(`Branch had an unexpected name ${branch}`);
   }
 
   const pullRequests = await client.pulls.list({
@@ -107,11 +114,19 @@ const run = async (payload: WebhookPayloadStatus): Promise<void> => {
     throw new Error('PRs could not be listed');
   }
 
-  const pullRequest = pullRequests.data.find((e) => e.head.sha === branch.commit.sha);
+  const validPullRequests = pullRequests.data.filter(
+    (e) =>
+      e.head.ref === branch.name && e.base.ref === 'master' && e.head.sha === branch.commit.sha,
+  );
 
-  if (!pullRequest) {
-    throw new Error('No PR returned');
+  if (validPullRequests.length !== 1) {
+    console.log('DEBUG: pullRequest array', JSON.stringify(validPullRequests));
+    throw new Error(
+      `Length of validPullRequests array is different than expected. Length: ${validPullRequests.length}`,
+    );
   }
+
+  const pullRequest = validPullRequests[0];
 
   console.log(`Found PR ${pullRequest.number} for deploy`);
 
