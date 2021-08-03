@@ -17,6 +17,13 @@ export const isInProdDependencies = (packageName: string) => {
   return isInProd ?? false;
 };
 
+export const isInDevDependencies = (packageName: string) => {
+  const { devDependencies } = getPackageJson();
+
+  const isInDev = devDependencies && packageName in devDependencies;
+  return isInDev ?? false;
+};
+
 export const isInAnyDependencies = (packageName: string) => {
   const { devDependencies, dependencies } = getPackageJson();
 

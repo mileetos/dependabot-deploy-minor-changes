@@ -34,7 +34,7 @@ module.exports =
 /******/ 	// the startup function
 /******/ 	function startup() {
 /******/ 		// Load entry module and return exports
-/******/ 		return __webpack_require__(929);
+/******/ 		return __webpack_require__(166);
 /******/ 	};
 /******/ 	// initialize runtime
 /******/ 	runtime(__webpack_require__);
@@ -1842,6 +1842,359 @@ const { paginateRest } = __webpack_require__(299);
 
 function paginatePlugin(octokit) {
   Object.assign(octokit, paginateRest(octokit));
+}
+
+
+/***/ }),
+
+/***/ 166:
+/***/ (function(__unusedmodule, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+
+// EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
+var core = __webpack_require__(470);
+
+// EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
+var github = __webpack_require__(469);
+
+// EXTERNAL MODULE: ./node_modules/moment-timezone/index.js
+var moment_timezone = __webpack_require__(717);
+var moment_timezone_default = /*#__PURE__*/__webpack_require__.n(moment_timezone);
+
+// EXTERNAL MODULE: ./node_modules/semver-diff/index.js
+var semver_diff = __webpack_require__(104);
+var semver_diff_default = /*#__PURE__*/__webpack_require__.n(semver_diff);
+
+// CONCATENATED MODULE: ./src/utils/getVersionTypeChangeFromTitle.ts
+
+const getVersionTypeChangeFromTitle = (title) => {
+    const VERSIONS_REGEX = /[0-9.]+/g;
+    const versions = title.match(VERSIONS_REGEX);
+    if (versions.length !== 2) {
+        throw new Error(`Expected two versions in PR title "${title}"`);
+    }
+    const [previous, next] = versions;
+    const version = semver_diff_default()(previous, next);
+    switch (version) {
+        case 'patch':
+            return 'PATCH';
+        case 'minor':
+            return 'MINOR';
+        case 'major':
+            return 'MAJOR';
+        default:
+            throw new Error(`Unexpected version change ${version} for title ${title}`);
+    }
+};
+
+// EXTERNAL MODULE: external "path"
+var external_path_ = __webpack_require__(622);
+
+// EXTERNAL MODULE: external "fs"
+var external_fs_ = __webpack_require__(747);
+var external_fs_default = /*#__PURE__*/__webpack_require__.n(external_fs_);
+
+// CONCATENATED MODULE: ./src/utils/packageJson.ts
+
+
+const getPath = () => Object(external_path_.join)(process.env.GITHUB_WORKSPACE, 'package.json').toString();
+const getPackageJson = () => JSON.parse(external_fs_default().readFileSync(getPath()).toString());
+const isInProdDependencies = (packageName) => {
+    const { dependencies } = getPackageJson();
+    const isInProd = dependencies && packageName in dependencies;
+    return isInProd !== null && isInProd !== void 0 ? isInProd : false;
+};
+const isInDevDependencies = (packageName) => {
+    const { devDependencies } = getPackageJson();
+    const isInDev = devDependencies && packageName in devDependencies;
+    return isInDev !== null && isInDev !== void 0 ? isInDev : false;
+};
+const isInAnyDependencies = (packageName) => {
+    var _a;
+    const { devDependencies, dependencies } = getPackageJson();
+    const isInDev = devDependencies && packageName in devDependencies;
+    const isInProd = dependencies && packageName in dependencies;
+    return (_a = (isInDev || isInProd)) !== null && _a !== void 0 ? _a : false;
+};
+
+// CONCATENATED MODULE: ./src/utils.ts
+const isSuccessStatusCode = (statusCode) => statusCode >= 200 && statusCode < 300;
+
+// CONCATENATED MODULE: ./src/deploy.ts
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+const LABEL_NAME = 'ready-for-deploy';
+const deploy = (pullRequestNumber, context, client) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log('Adding deploy label');
+    const addLabelResult = yield client.issues.addLabels({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: pullRequestNumber,
+        labels: [LABEL_NAME],
+    });
+    if (!isSuccessStatusCode(addLabelResult.status)) {
+        throw new Error(`Label could not be added. ${JSON.stringify(addLabelResult)}`);
+    }
+    console.log('Label for deploy added');
+});
+
+// CONCATENATED MODULE: ./src/review.ts
+var review_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+const addReview = (pullRequestNumber, context, client) => review_awaiter(void 0, void 0, void 0, function* () {
+    console.log('Creating review');
+    const createReviewResult = yield client.pulls.createReview({
+        event: 'APPROVE',
+        pull_number: pullRequestNumber,
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+    });
+    if (!isSuccessStatusCode(createReviewResult.status)) {
+        throw new Error(`Review could not be created. ${JSON.stringify(createReviewResult)}`);
+    }
+    console.log('Review created');
+});
+
+// CONCATENATED MODULE: ./src/utils/isWorkingHour.ts
+const isWorkingHour = (datetime) => {
+    // 1 is Monday, 7 is Sunday
+    const weekday = datetime.isoWeekday();
+    if (weekday === 6 || weekday === 7) {
+        console.log('isWorkingHour: false because it is a weekend');
+        return false;
+    }
+    const hour = datetime.hour();
+    if (hour < 7 || hour >= 17) {
+        console.log('isWorkingHour: false because it is out of the working hours (07-00 - 16:59)');
+        return false;
+    }
+    return true;
+};
+
+// CONCATENATED MODULE: ./src/utils/getPackageNameFromTitle.ts
+const getPackageNameFromTitle = (title) => {
+    const matched = title.match(/Bump (.*?) from/);
+    if (!matched || !matched[1]) {
+        throw new Error(`Package name could not be parsed from title ${title} by the regex`);
+    }
+    return matched[1].trim();
+};
+
+// CONCATENATED MODULE: ./src/utils/isMergeableDevDependency.ts
+const validPrefixes = ['@types/', 'eslint', 'jest', 'lint', 'husky', 'prettier'];
+const isMergeableDevDependency = (packageName) => {
+    return validPrefixes.some((prefix) => packageName.startsWith(prefix));
+};
+
+// CONCATENATED MODULE: ./src/merge.ts
+var merge_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+const mergeToMaster = (pullRequestNumber, context, client) => merge_awaiter(void 0, void 0, void 0, function* () {
+    console.log('Starting merge to master');
+    const mergePullRequestResult = yield client.pulls.merge({
+        pull_number: pullRequestNumber,
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+    });
+    if (!isSuccessStatusCode(mergePullRequestResult.status)) {
+        console.log(`Merge could not be made. ${JSON.stringify(mergePullRequestResult)}`);
+        return false;
+    }
+    console.log('Merge done');
+    return true;
+});
+
+// CONCATENATED MODULE: ./src/index.ts
+var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+const DEPLOY_DEPENDENCIES = ['dev', 'all'];
+const VERSION_TYPES = ['PATCH', 'MINOR', 'MAJOR'];
+const DEPENDABOT_BRANCH_PREFIX = 'dependabot';
+const EXPECTED_CONCLUSION = 'success';
+const EXPECTED_CONTEXT = 'continuous-integration/codeship';
+const DEPENDABOT_LABEL = 'dependencies';
+const getInputParams = () => {
+    const deployDependencies = Object(core.getInput)('deployDependencies');
+    const gitHubToken = Object(core.getInput)('gitHubToken');
+    const deployOnlyInWorkingHours = Boolean(Object(core.getInput)('deployOnlyInWorkingHours'));
+    const timezone = Object(core.getInput)('timezone');
+    const maxDeployVersion = Object(core.getInput)('maxDeployVersion').toUpperCase();
+    const isValidTimezone = moment_timezone_default().tz.zone(timezone);
+    if (!isValidTimezone) {
+        throw new Error(`Unexpected input ${timezone} for timezone. Please check https://momentjs.com/timezone/ for list of valid timezones`);
+    }
+    if (!VERSION_TYPES.includes(maxDeployVersion)) {
+        throw new Error(`Unexpected input for maxDeployVersion ${maxDeployVersion}`);
+    }
+    if (!DEPLOY_DEPENDENCIES.includes(deployDependencies)) {
+        throw new Error(`Unexpected input for deployDependencies ${deployDependencies}`);
+    }
+    return {
+        deployDependencies,
+        gitHubToken,
+        maxDeployVersion,
+        deployOnlyInWorkingHours,
+        timezone,
+    };
+};
+const shouldDeployBranch = (branchName) => branchName.startsWith(DEPENDABOT_BRANCH_PREFIX);
+const shouldDeployLabel = (labels) => labels.includes(DEPENDABOT_LABEL);
+const shouldDeployVersion = (versionChangeType, maxDeployVersion) => {
+    const versionIndex = VERSION_TYPES.indexOf(versionChangeType);
+    const maxVersionIndex = VERSION_TYPES.indexOf(maxDeployVersion);
+    return versionIndex <= maxVersionIndex;
+};
+const isAllowedToDeployNow = (deployOnlyInWorkingHours, timezone) => {
+    if (!deployOnlyInWorkingHours) {
+        return true;
+    }
+    const now = moment_timezone_default().tz(timezone);
+    return isWorkingHour(now);
+};
+const run = (payload) => src_awaiter(void 0, void 0, void 0, function* () {
+    const input = getInputParams();
+    const client = new github.GitHub(input.gitHubToken);
+    if (payload.context !== EXPECTED_CONTEXT) {
+        console.log('Context is not codeship, skipping');
+        return;
+    }
+    const isSuccess = payload.state === EXPECTED_CONCLUSION;
+    if (!isSuccess) {
+        console.log('Status is not success, skipping');
+        return;
+    }
+    if (payload.branches.length !== 1) {
+        console.log('DEBUG: payload.branches array', JSON.stringify(payload.branches));
+        throw new Error(`Length of payload.branches array is different than expected. Length: ${payload.branches.length}`);
+    }
+    const branch = payload.branches[0];
+    if (!shouldDeployBranch(branch.name)) {
+        throw new Error(`Branch had an unexpected name ${branch}`);
+    }
+    const pullRequests = yield client.pulls.list({
+        direction: 'desc',
+        sort: 'updated',
+        state: 'open',
+        repo: github.context.repo.repo,
+        owner: github.context.repo.owner,
+    });
+    if (!isSuccessStatusCode(pullRequests.status)) {
+        throw new Error('PRs could not be listed');
+    }
+    const validPullRequests = pullRequests.data.filter((e) => e.head.ref === branch.name && e.base.ref === 'master' && e.head.sha === branch.commit.sha);
+    if (validPullRequests.length !== 1) {
+        console.log('DEBUG: pullRequest array', JSON.stringify(validPullRequests));
+        throw new Error(`Length of validPullRequests array is different than expected. Length: ${validPullRequests.length}`);
+    }
+    const pullRequest = validPullRequests[0];
+    console.log(`Found PR ${pullRequest.number} for deploy`);
+    const listParams = {
+        pull_number: pullRequest.number,
+        repo: github.context.repo.repo,
+        owner: github.context.repo.owner,
+    };
+    const [commits, comments, reviews] = yield Promise.all([
+        client.pulls.listCommits(listParams),
+        client.pulls.listComments(listParams),
+        client.pulls.listReviews(listParams),
+    ]);
+    if (commits.data.length > 1 || comments.data.length > 0 || reviews.data.length > 0) {
+        console.log(`Found interaction with the PR. Skipping. Commits: ${commits.data.length}, Comments: ${comments.data.length}, Reviews: ${reviews.data.length}`);
+        return;
+    }
+    if (!commits.data[0].commit.author.name.toLowerCase().startsWith('dependabot')) {
+        console.log(`First commit not from dependabot. Commit author: ${commits.data[0].commit.author.name}`);
+        return;
+    }
+    const versionChangeType = getVersionTypeChangeFromTitle(pullRequest.title);
+    if (!shouldDeployVersion(versionChangeType, input.maxDeployVersion)) {
+        console.log(`Skipping deploy for version type ${versionChangeType}. Running with maxDeployVersion ${input.maxDeployVersion}`);
+        return;
+    }
+    const labels = pullRequest.labels.map((e) => e.name);
+    if (!shouldDeployLabel(labels)) {
+        console.log(`Skipping deploy. PRs with Labels "${labels}" should not be deployed`);
+        return;
+    }
+    const packageName = getPackageNameFromTitle(pullRequest.title);
+    if (input.deployDependencies === 'dev' && isInProdDependencies(packageName)) {
+        console.log(`Skipping deploy. Package ${packageName} found in prod dependencies`);
+        return;
+    }
+    if (!isInAnyDependencies(packageName)) {
+        console.log(`Skipping deploy. Package ${packageName} not found in any dependencies`);
+        return;
+    }
+    yield addReview(pullRequest.number, github.context, client);
+    if (isInDevDependencies(packageName) && isMergeableDevDependency(packageName)) {
+        console.log(`Merging dependency without deploy. Package ${packageName}`);
+        const wasMerged = yield mergeToMaster(pullRequest.number, github.context, client);
+        if (wasMerged) {
+            return;
+        }
+    }
+    if (isAllowedToDeployNow(input.deployOnlyInWorkingHours, input.timezone)) {
+        yield deploy(pullRequest.number, github.context, client);
+    }
+    else {
+        console.log('Skipping deploy outside of working hours');
+    }
+});
+try {
+    if (github.context.eventName === 'status') {
+        run(github.context.payload);
+    }
+    else {
+        console.log(`Not running for event ${github.context.eventName} and action ${github.context.action}`);
+    }
+}
+catch (error) {
+    Object(core.setFailed)(error.message);
 }
 
 
@@ -6762,22 +7115,6 @@ function register (state, name, method, options) {
         return registered.hook.bind(null, method, options)
       }, method)()
     })
-}
-
-
-/***/ }),
-
-/***/ 366:
-/***/ (function(module, __unusedexports, __webpack_require__) {
-
-module.exports = hasNextPage
-
-const deprecate = __webpack_require__(370)
-const getPageLinks = __webpack_require__(577)
-
-function hasNextPage (link) {
-  deprecate(`octokit.hasNextPage() – You can use octokit.paginate or async iterators instead: https://github.com/octokit/rest.js#pagination.`)
-  return getPageLinks(link).next
 }
 
 
@@ -29409,7 +29746,7 @@ function paginationMethodsPlugin (octokit) {
   octokit.getPreviousPage = __webpack_require__(563).bind(null, octokit)
   octokit.hasFirstPage = __webpack_require__(536)
   octokit.hasLastPage = __webpack_require__(336)
-  octokit.hasNextPage = __webpack_require__(366)
+  octokit.hasNextPage = __webpack_require__(929)
   octokit.hasPreviousPage = __webpack_require__(558)
 }
 
@@ -31661,307 +31998,16 @@ exports.requestLog = requestLog;
 /***/ }),
 
 /***/ 929:
-/***/ (function(__unusedmodule, __webpack_exports__, __webpack_require__) {
+/***/ (function(module, __unusedexports, __webpack_require__) {
 
-"use strict";
-__webpack_require__.r(__webpack_exports__);
+module.exports = hasNextPage
 
-// EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
-var core = __webpack_require__(470);
+const deprecate = __webpack_require__(370)
+const getPageLinks = __webpack_require__(577)
 
-// EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
-var github = __webpack_require__(469);
-
-// EXTERNAL MODULE: ./node_modules/moment-timezone/index.js
-var moment_timezone = __webpack_require__(717);
-var moment_timezone_default = /*#__PURE__*/__webpack_require__.n(moment_timezone);
-
-// EXTERNAL MODULE: ./node_modules/semver-diff/index.js
-var semver_diff = __webpack_require__(104);
-var semver_diff_default = /*#__PURE__*/__webpack_require__.n(semver_diff);
-
-// CONCATENATED MODULE: ./src/utils/getVersionTypeChangeFromTitle.ts
-
-const getVersionTypeChangeFromTitle = (title) => {
-    const VERSIONS_REGEX = /[0-9.]+/g;
-    const versions = title.match(VERSIONS_REGEX);
-    if (versions.length !== 2) {
-        throw new Error(`Expected two versions in PR title "${title}"`);
-    }
-    const [previous, next] = versions;
-    const version = semver_diff_default()(previous, next);
-    switch (version) {
-        case 'patch':
-            return 'PATCH';
-        case 'minor':
-            return 'MINOR';
-        case 'major':
-            return 'MAJOR';
-        default:
-            throw new Error(`Unexpected version change ${version} for title ${title}`);
-    }
-};
-
-// EXTERNAL MODULE: external "path"
-var external_path_ = __webpack_require__(622);
-
-// EXTERNAL MODULE: external "fs"
-var external_fs_ = __webpack_require__(747);
-var external_fs_default = /*#__PURE__*/__webpack_require__.n(external_fs_);
-
-// CONCATENATED MODULE: ./src/utils/packageJson.ts
-
-
-const getPath = () => Object(external_path_.join)(process.env.GITHUB_WORKSPACE, 'package.json').toString();
-const getPackageJson = () => JSON.parse(external_fs_default().readFileSync(getPath()).toString());
-const isInProdDependencies = (packageName) => {
-    const { dependencies } = getPackageJson();
-    const isInProd = dependencies && packageName in dependencies;
-    return isInProd !== null && isInProd !== void 0 ? isInProd : false;
-};
-const isInAnyDependencies = (packageName) => {
-    var _a;
-    const { devDependencies, dependencies } = getPackageJson();
-    const isInDev = devDependencies && packageName in devDependencies;
-    const isInProd = dependencies && packageName in dependencies;
-    return (_a = (isInDev || isInProd)) !== null && _a !== void 0 ? _a : false;
-};
-
-// CONCATENATED MODULE: ./src/utils.ts
-const isSuccessStatusCode = (statusCode) => statusCode >= 200 && statusCode < 300;
-
-// CONCATENATED MODULE: ./src/deploy.ts
-var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-const LABEL_NAME = 'ready-for-deploy';
-const deploy = (pullRequestNumber, context, client) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('Adding deploy label');
-    const addLabelResult = yield client.issues.addLabels({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        issue_number: pullRequestNumber,
-        labels: [LABEL_NAME],
-    });
-    if (!isSuccessStatusCode(addLabelResult.status)) {
-        throw new Error(`Label could not be added. ${JSON.stringify(addLabelResult)}`);
-    }
-    console.log('Label for deploy added');
-});
-
-// CONCATENATED MODULE: ./src/review.ts
-var review_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-const addReview = (pullRequestNumber, context, client) => review_awaiter(void 0, void 0, void 0, function* () {
-    console.log('Creating review');
-    const createReviewResult = yield client.pulls.createReview({
-        event: 'APPROVE',
-        pull_number: pullRequestNumber,
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-    });
-    if (!isSuccessStatusCode(createReviewResult.status)) {
-        throw new Error(`Review could not be created. ${JSON.stringify(createReviewResult)}`);
-    }
-    console.log('Review created');
-});
-
-// CONCATENATED MODULE: ./src/utils/isWorkingHour.ts
-const isWorkingHour = (datetime) => {
-    // 1 is Monday, 7 is Sunday
-    const weekday = datetime.isoWeekday();
-    if (weekday === 6 || weekday === 7) {
-        console.log('isWorkingHour: false because it is a weekend');
-        return false;
-    }
-    const hour = datetime.hour();
-    if (hour < 7 || hour >= 17) {
-        console.log('isWorkingHour: false because it is out of the working hours (07-00 - 16:59)');
-        return false;
-    }
-    return true;
-};
-
-// CONCATENATED MODULE: ./src/utils/getPackageNameFromTitle.ts
-const getPackageNameFromTitle = (title) => {
-    const matched = title.match(/Bump (.*?) from/);
-    if (!matched || !matched[1]) {
-        throw new Error(`Package name could not be parsed from title ${title} by the regex`);
-    }
-    return matched[1].trim();
-};
-
-// CONCATENATED MODULE: ./src/index.ts
-var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-
-
-
-
-
-
-
-
-
-const DEPLOY_DEPENDENCIES = ['dev', 'all'];
-const VERSION_TYPES = ['PATCH', 'MINOR', 'MAJOR'];
-const DEPENDABOT_BRANCH_PREFIX = 'dependabot';
-const EXPECTED_CONCLUSION = 'success';
-const EXPECTED_CONTEXT = 'continuous-integration/codeship';
-const DEPENDABOT_LABEL = 'dependencies';
-const getInputParams = () => {
-    const deployDependencies = Object(core.getInput)('deployDependencies');
-    const gitHubToken = Object(core.getInput)('gitHubToken');
-    const deployOnlyInWorkingHours = Boolean(Object(core.getInput)('deployOnlyInWorkingHours'));
-    const timezone = Object(core.getInput)('timezone');
-    const maxDeployVersion = Object(core.getInput)('maxDeployVersion').toUpperCase();
-    const isValidTimezone = moment_timezone_default().tz.zone(timezone);
-    if (!isValidTimezone) {
-        throw new Error(`Unexpected input ${timezone} for timezone. Please check https://momentjs.com/timezone/ for list of valid timezones`);
-    }
-    if (!VERSION_TYPES.includes(maxDeployVersion)) {
-        throw new Error(`Unexpected input for maxDeployVersion ${maxDeployVersion}`);
-    }
-    if (!DEPLOY_DEPENDENCIES.includes(deployDependencies)) {
-        throw new Error(`Unexpected input for deployDependencies ${deployDependencies}`);
-    }
-    return {
-        deployDependencies,
-        gitHubToken,
-        maxDeployVersion,
-        deployOnlyInWorkingHours,
-        timezone,
-    };
-};
-const shouldDeployBranch = (branchName) => branchName.startsWith(DEPENDABOT_BRANCH_PREFIX);
-const shouldDeployLabel = (labels) => labels.includes(DEPENDABOT_LABEL);
-const shouldDeployVersion = (versionChangeType, maxDeployVersion) => {
-    const versionIndex = VERSION_TYPES.indexOf(versionChangeType);
-    const maxVersionIndex = VERSION_TYPES.indexOf(maxDeployVersion);
-    return versionIndex <= maxVersionIndex;
-};
-const isAllowedToDeployNow = (deployOnlyInWorkingHours, timezone) => {
-    if (!deployOnlyInWorkingHours) {
-        return true;
-    }
-    const now = moment_timezone_default().tz(timezone);
-    return isWorkingHour(now);
-};
-const run = (payload) => src_awaiter(void 0, void 0, void 0, function* () {
-    const input = getInputParams();
-    const client = new github.GitHub(input.gitHubToken);
-    if (payload.context !== EXPECTED_CONTEXT) {
-        console.log('Context is not codeship, skipping');
-        return;
-    }
-    const isSuccess = payload.state === EXPECTED_CONCLUSION;
-    if (!isSuccess) {
-        console.log('Status is not success, skipping');
-        return;
-    }
-    if (payload.branches.length !== 1) {
-        console.log('DEBUG: payload.branches array', JSON.stringify(payload.branches));
-        throw new Error(`Length of payload.branches array is different than expected. Length: ${payload.branches.length}`);
-    }
-    const branch = payload.branches[0];
-    if (!shouldDeployBranch(branch.name)) {
-        throw new Error(`Branch had an unexpected name ${branch}`);
-    }
-    const pullRequests = yield client.pulls.list({
-        direction: 'desc',
-        sort: 'updated',
-        state: 'open',
-        repo: github.context.repo.repo,
-        owner: github.context.repo.owner,
-    });
-    if (!isSuccessStatusCode(pullRequests.status)) {
-        throw new Error('PRs could not be listed');
-    }
-    const validPullRequests = pullRequests.data.filter((e) => e.head.ref === branch.name && e.base.ref === 'master' && e.head.sha === branch.commit.sha);
-    if (validPullRequests.length !== 1) {
-        console.log('DEBUG: pullRequest array', JSON.stringify(validPullRequests));
-        throw new Error(`Length of validPullRequests array is different than expected. Length: ${validPullRequests.length}`);
-    }
-    const pullRequest = validPullRequests[0];
-    console.log(`Found PR ${pullRequest.number} for deploy`);
-    const listParams = {
-        pull_number: pullRequest.number,
-        repo: github.context.repo.repo,
-        owner: github.context.repo.owner,
-    };
-    const [commits, comments, reviews] = yield Promise.all([
-        client.pulls.listCommits(listParams),
-        client.pulls.listComments(listParams),
-        client.pulls.listReviews(listParams),
-    ]);
-    if (commits.data.length > 1 || comments.data.length > 0 || reviews.data.length > 0) {
-        console.log(`Found interaction with the PR. Skipping. Commits: ${commits.data.length}, Comments: ${comments.data.length}, Reviews: ${reviews.data.length}`);
-        return;
-    }
-    if (!commits.data[0].commit.author.name.toLowerCase().startsWith('dependabot')) {
-        console.log(`First commit not from dependabot. Commit author: ${commits.data[0].commit.author.name}`);
-        return;
-    }
-    const versionChangeType = getVersionTypeChangeFromTitle(pullRequest.title);
-    if (!shouldDeployVersion(versionChangeType, input.maxDeployVersion)) {
-        console.log(`Skipping deploy for version type ${versionChangeType}. Running with maxDeployVersion ${input.maxDeployVersion}`);
-        return;
-    }
-    const labels = pullRequest.labels.map((e) => e.name);
-    if (!shouldDeployLabel(labels)) {
-        console.log(`Skipping deploy. PRs with Labels "${labels}" should not be deployed`);
-        return;
-    }
-    const packageName = getPackageNameFromTitle(pullRequest.title);
-    if (input.deployDependencies === 'dev' && isInProdDependencies(packageName)) {
-        console.log(`Skipping deploy. Package ${packageName} found in prod dependencies`);
-        return;
-    }
-    if (!isInAnyDependencies(packageName)) {
-        console.log(`Skipping deploy. Package ${packageName} not found in any dependencies`);
-        return;
-    }
-    yield addReview(pullRequest.number, github.context, client);
-    if (isAllowedToDeployNow(input.deployOnlyInWorkingHours, input.timezone)) {
-        yield deploy(pullRequest.number, github.context, client);
-    }
-    else {
-        console.log('Skipping deploy outside of working hours');
-    }
-});
-try {
-    if (github.context.eventName === 'status') {
-        run(github.context.payload);
-    }
-    else {
-        console.log(`Not running for event ${github.context.eventName} and action ${github.context.action}`);
-    }
-}
-catch (error) {
-    Object(core.setFailed)(error.message);
+function hasNextPage (link) {
+  deprecate(`octokit.hasNextPage() – You can use octokit.paginate or async iterators instead: https://github.com/octokit/rest.js#pagination.`)
+  return getPageLinks(link).next
 }
 
 

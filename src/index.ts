@@ -4,12 +4,18 @@ import { WebhookPayloadStatus } from '@octokit/webhooks';
 import moment from 'moment-timezone';
 import { VersionType, InputParams, DeployDependencies } from './types';
 import { getVersionTypeChangeFromTitle } from './utils/getVersionTypeChangeFromTitle';
-import { isInProdDependencies, isInAnyDependencies } from './utils/packageJson';
+import {
+  isInProdDependencies,
+  isInAnyDependencies,
+  isInDevDependencies,
+} from './utils/packageJson';
 import { deploy } from './deploy';
 import { isSuccessStatusCode } from './utils';
 import { addReview } from './review';
 import { isWorkingHour } from './utils/isWorkingHour';
 import { getPackageNameFromTitle } from './utils/getPackageNameFromTitle';
+import { isMergeableDevDependency } from './utils/isMergeableDevDependency';
+import { mergeToMaster } from './merge';
 
 const DEPLOY_DEPENDENCIES = ['dev', 'all'];
 const VERSION_TYPES = ['PATCH', 'MINOR', 'MAJOR'];
@@ -184,6 +190,14 @@ const run = async (payload: WebhookPayloadStatus): Promise<void> => {
   }
 
   await addReview(pullRequest.number, context, client);
+
+  if (isInDevDependencies(packageName) && isMergeableDevDependency(packageName)) {
+    console.log(`Merging dependency without deploy. Package ${packageName}`);
+    const wasMerged = await mergeToMaster(pullRequest.number, context, client);
+    if (wasMerged) {
+      return;
+    }
+  }
 
   if (isAllowedToDeployNow(input.deployOnlyInWorkingHours, input.timezone)) {
     await deploy(pullRequest.number, context, client);
