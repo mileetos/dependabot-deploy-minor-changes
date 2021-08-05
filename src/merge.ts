@@ -13,6 +13,7 @@ export const mergeToMaster = async (
     pull_number: pullRequestNumber,
     owner: context.repo.owner,
     repo: context.repo.repo,
+    merge_method: 'squash',
   });
 
   if (!isSuccessStatusCode(mergePullRequestResult.status)) {
