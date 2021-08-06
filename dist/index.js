@@ -2091,6 +2091,7 @@ const mergeToMaster = (pullRequestNumber, context, client) => merge_awaiter(void
         pull_number: pullRequestNumber,
         owner: context.repo.owner,
         repo: context.repo.repo,
+        merge_method: 'squash',
     });
     if (!isSuccessStatusCode(mergePullRequestResult.status)) {
         console.log(`Merge could not be made. ${JSON.stringify(mergePullRequestResult)}`);
