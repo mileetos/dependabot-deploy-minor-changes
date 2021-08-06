@@ -26,6 +26,7 @@ const DEPENDABOT_LABEL = 'dependencies';
 
 const getInputParams = (): InputParams => {
   const deployDependencies = core.getInput('deployDependencies') as DeployDependencies;
+  const updateIndirectDependencies = Boolean(core.getInput('updateIndirectDependencies'));
   const gitHubToken = core.getInput('gitHubToken');
   const deployOnlyInWorkingHours = Boolean(core.getInput('deployOnlyInWorkingHours'));
   const timezone = core.getInput('timezone');
@@ -48,6 +49,7 @@ const getInputParams = (): InputParams => {
 
   return {
     deployDependencies,
+    updateIndirectDependencies,
     gitHubToken,
     maxDeployVersion,
     deployOnlyInWorkingHours,
@@ -184,7 +186,7 @@ const run = async (payload: WebhookPayloadStatus): Promise<void> => {
     return;
   }
 
-  if (!isInAnyDependencies(packageName)) {
+  if (!input.updateIndirectDependencies && !isInAnyDependencies(packageName)) {
     console.log(`Skipping deploy. Package ${packageName} not found in any dependencies`);
     return;
   }

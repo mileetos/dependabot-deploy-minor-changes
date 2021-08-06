@@ -20,6 +20,10 @@ inputs:
     description: 'Defines what dependencies should be deployed. Either `dev` or `all`. Default `dev`'
     required: false
     default: dev
+  updateIndirectDependencies:
+    description: 'Defines whether to update dependencies of dependencies. Either `true` or `false`. Default `false`'
+    required: false
+    default: false
 runs:
   using: 'node12'
   main: 'dist/index.js'

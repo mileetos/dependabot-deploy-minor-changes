@@ -44,6 +44,10 @@ Timezone defined https://momentjs.com/timezone/ used to verify if the current ti
 
 Defines what dependencies should be deployed. Either `dev` or `all`. Default `dev`
 
+#### updateIndirectDependencies
+
+Defines whether to deploy indirect dependencies (dependencies of dependencies). Either `true` or `false`. Default `false`
+
 ### Development
 
 To install all dependencies run:
