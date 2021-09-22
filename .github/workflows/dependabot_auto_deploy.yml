@@ -1,0 +1,18 @@
+on: [status, workflow_dispatch, pull_request_target]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Dependabot auto deploy dependencies
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Deploy
+        uses: mileetos/dependabot-deploy-public-action@main
+        with:
+          gitHubToken: ${{ secrets.GH_TOKEN }}
+          maxDeployVersion: 'MINOR'
+          deployDependencies: 'all'
+          updateIndirectDependencies: 'true'
+          deployOnlyInWorkingHours: 'true'
+          timeZone: 'Europe/Tallinn'
