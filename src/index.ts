@@ -91,6 +91,8 @@ const run = async (payload: WebhookPayloadStatus): Promise<void> => {
     return;
   }
 
+  console.log('PAYLOAD', payload);
+
   const isSuccess = payload.state === EXPECTED_CONCLUSION;
   if (!isSuccess) {
     console.log('Status is not success, skipping');

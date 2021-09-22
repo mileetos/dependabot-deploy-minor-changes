@@ -1,4 +1,4 @@
-name: 'Dependabot Deploy'
+name: 'Dependabot Deploy Minor'
 description: 'Automatically deploys PRs made by dependabot'
 inputs:
   gitHubToken:

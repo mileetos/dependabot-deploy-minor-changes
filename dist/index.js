@@ -2176,6 +2176,7 @@ const run = (payload) => src_awaiter(void 0, void 0, void 0, function* () {
         console.log('Context is not codeship, skipping');
         return;
     }
+    console.log('PAYLOAD', payload);
     const isSuccess = payload.state === EXPECTED_CONCLUSION;
     if (!isSuccess) {
         console.log('Status is not success, skipping');
