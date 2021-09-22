@@ -1,6 +1,10 @@
-# Dependabot Deploy GitHub action
+#
 
-A GitHub Action which allows to deploy Pipedrive services. Automatically approves Dependabot PRs and adds 'ready-for-deploy' label.
+# Dependabot Minor Updates Deploy GitHub action - IN TESTING
+
+Forked from the Github Action created by our wonderful Prague colleagues.
+
+A GitHub Action which allows to deploy Pipedrive services. Needs developer approval and reconciles previous updates before adding ready-for-deploy label.
 
 ## Usage
 
@@ -17,7 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Deploy
-        uses: pipedrive/dependabot-deploy-action@master
+        uses: pipedrive/dependabot-deploy-minor-changes@master
         with:
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 ```

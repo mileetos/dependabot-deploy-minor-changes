@@ -1,5 +1,5 @@
 {
-  "name": "dependabot-autodeploy-action",
+  "name": "dependabot-deploy-minor-changes",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
